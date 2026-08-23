@@ -41,11 +41,6 @@ It is designed as both a working banking application and a reusable foundation f
 | 📈 | **Operational visibility** | Actuator health metrics and OpenTelemetry traces, metrics, and logs |
 
 ## Architecture
-
-<div align="center">
-  <img src="docs/banking-system-architecture.svg" width="100%" alt="Banking system architecture" />
-</div>
-
 The frontend communicates only with the reactive HTTP gateway. The gateway validates access tokens and translates HTTP requests into internal gRPC calls. Each domain service owns its data and exposes focused use cases through ports and adapters.
 
 ```text
