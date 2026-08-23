@@ -124,10 +124,6 @@ The React application includes an animated ledger visualizer that walks through 
 
 ## Architecture
 
-<div align="center">
-  <img src="docs/banking-system-architecture.svg" width="100%" alt="Online Banking System architecture" />
-</div>
-
 The React client communicates exclusively with the reactive HTTP gateway.
 
 The gateway authenticates requests, applies authorization rules, validates input, and translates external HTTP operations into typed internal gRPC calls.
