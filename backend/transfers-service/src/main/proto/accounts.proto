@@ -1,0 +1,256 @@
+syntax = "proto3";
+
+package accounts.v1;
+
+option java_package = "com.banking.accounts.v1";
+option java_multiple_files = true;
+
+service AccountsService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc ListMyAccounts(ListMyAccountsRequest) returns (ListMyAccountsResponse);
+  rpc ListAccountsByType(ListAccountsByTypeRequest) returns (ListAccountsByTypeResponse);
+  rpc AdminListAccountsByUser(AdminListAccountsByUserRequest) returns (AdminListAccountsByUserResponse);
+  rpc SetAccountDisplayName(SetAccountDisplayNameRequest) returns (SetAccountDisplayNameResponse);
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+
+  rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse);
+  rpc ListMyInvitations(ListMyInvitationsRequest) returns (ListMyInvitationsResponse);
+  rpc ListAccountInvitations(ListAccountInvitationsRequest) returns (ListAccountInvitationsResponse);
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  rpc DeclineInvitation(DeclineInvitationRequest) returns (DeclineInvitationResponse);
+  rpc CancelInvitation(CancelInvitationRequest) returns (CancelInvitationResponse);
+
+  rpc IsMember(IsMemberRequest) returns (IsMemberResponse);
+  rpc ListAccountMembers(ListAccountMembersRequest) returns (ListAccountMembersResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc CanDebit(CanDebitRequest) returns (CanDebitResponse);
+
+  rpc AdminSetAccountFrozen(AdminSetAccountFrozenRequest) returns (AdminSetAccountFrozenResponse);
+}
+
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_CHECKING = 1;
+  ACCOUNT_TYPE_SAVINGS = 2;
+}
+
+enum MembershipRole {
+  MEMBERSHIP_ROLE_UNSPECIFIED = 0;
+  MEMBERSHIP_ROLE_OWNER = 1;
+  MEMBERSHIP_ROLE_MEMBER = 2;
+}
+
+enum InvitationStatus {
+  INVITATION_STATUS_UNSPECIFIED = 0;
+  INVITATION_STATUS_PENDING = 1;
+  INVITATION_STATUS_ACCEPTED = 2;
+  INVITATION_STATUS_DECLINED = 3;
+  INVITATION_STATUS_EXPIRED = 4;
+  INVITATION_STATUS_CANCELED = 5;
+}
+
+message Account {
+  string id = 1;
+  string iban = 2;
+  int64 created_at_epoch_ms = 3;
+  AccountType account_type = 4;
+  bool frozen = 5;
+  string display_name = 6;
+}
+
+message AdminSetAccountFrozenRequest {
+  string account_id = 1;
+  bool frozen = 2;
+}
+
+message AdminSetAccountFrozenResponse {
+  string account_id = 1;
+  bool frozen = 2;
+}
+
+message AccountMembership {
+  string account_id = 1;
+  string user_id = 2;
+  MembershipRole role = 3;
+  int64 created_at_epoch_ms = 4;
+}
+
+message AccountInvitation {
+  string id = 1;
+  string account_id = 2;
+  string invited_user_id = 3;
+  string invited_by_user_id = 4;
+  MembershipRole role = 5;
+  InvitationStatus status = 6;
+  int64 created_at_epoch_ms = 7;
+  int64 expires_at_epoch_ms = 8;
+  int64 responded_at_epoch_ms = 9;
+  string invited_by_email = 10;
+}
+
+message CreateAccountRequest {
+  string idempotency_key = 1;
+  AccountType account_type = 2;
+  string display_name = 3;
+}
+
+message SetAccountDisplayNameRequest {
+  string account_id = 1;
+  string display_name = 2;
+}
+
+message SetAccountDisplayNameResponse {
+  Account account = 1;
+}
+
+message AdminListAccountsByUserRequest {
+  string user_id = 1;
+}
+
+message AdminListAccountsByUserResponse {
+  repeated Account accounts = 1;
+}
+
+message CreateAccountResponse {
+  Account account = 1;
+}
+
+message GetAccountRequest {
+  string account_id = 1;
+}
+
+message GetAccountResponse {
+  Account account = 1;
+}
+
+message ListMyAccountsRequest {}
+
+message ListMyAccountsResponse {
+  repeated Account accounts = 1;
+}
+
+message ListAccountsByTypeRequest {
+  AccountType account_type = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListAccountsByTypeResponse {
+  repeated Account accounts = 1;
+}
+
+message AddMemberRequest {
+  string account_id = 1;
+  string member_user_id = 2;
+  MembershipRole role = 3;
+}
+
+message AddMemberResponse {
+  AccountMembership membership = 1;
+}
+
+message InviteMemberRequest {
+  string account_id = 1;
+  string invited_user_id = 2;
+  MembershipRole role = 3;
+  int64 ttl_seconds = 4;
+  string invited_by_email = 5;
+}
+
+message InviteMemberResponse {
+  AccountInvitation invitation = 1;
+}
+
+message ListMyInvitationsRequest {
+  InvitationStatus status = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListMyInvitationsResponse {
+  repeated AccountInvitation invitations = 1;
+}
+
+message ListAccountInvitationsRequest {
+  string account_id = 1;
+  InvitationStatus status = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ListAccountInvitationsResponse {
+  repeated AccountInvitation invitations = 1;
+}
+
+message AcceptInvitationRequest {
+  string invitation_id = 1;
+}
+
+message AcceptInvitationResponse {
+  AccountMembership membership = 1;
+}
+
+message DeclineInvitationRequest {
+  string invitation_id = 1;
+}
+
+message DeclineInvitationResponse {
+  AccountInvitation invitation = 1;
+}
+
+message CancelInvitationRequest {
+  string invitation_id = 1;
+}
+
+message CancelInvitationResponse {
+  AccountInvitation invitation = 1;
+}
+
+message IsMemberRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message IsMemberResponse {
+  bool is_member = 1;
+  MembershipRole role = 2;
+}
+
+message ListAccountMembersRequest {
+  string account_id = 1;
+}
+
+message ListAccountMembersResponse {
+  repeated AccountMembership members = 1;
+}
+
+message RemoveMemberRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message RemoveMemberResponse {
+  bool success = 1;
+}
+
+message CanDebitRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message CanDebitResponse {
+  bool allowed = 1;
+  string reason = 2;
+  AccountType account_type = 3;
+}
+
+message PingRequest {
+  string message = 1;
+}
+
+message PingResponse {
+  string message = 1;
+}

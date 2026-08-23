@@ -1,0 +1,2 @@
+ALTER TABLE accounts
+    ADD COLUMN IF NOT EXISTS display_name TEXT NOT NULL DEFAULT '';

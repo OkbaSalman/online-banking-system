@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package ledger.v1;
+
+option java_package = "com.banking.ledger.v1";
+option java_multiple_files = true;
+
+service LedgerService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse);
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+
+  rpc GetEntry(GetEntryRequest) returns (GetEntryResponse);
+
+  rpc ListAccountEntries(ListAccountEntriesRequest) returns (ListAccountEntriesResponse);
+  rpc GetAccountChainHead(GetAccountChainHeadRequest) returns (GetAccountChainHeadResponse);
+  rpc VerifyAccountChain(VerifyAccountChainRequest) returns (VerifyAccountChainResponse);
+}
+
+message PingRequest { string message = 1; }
+message PingResponse { string message = 1; }
+
+message Posting {
+  string account_id = 1;
+  int64 amount_cents = 2;
+}
+
+message LedgerEntry {
+  string id = 1;
+  string initiator_user_id = 2;
+  string idempotency_key = 3;
+  string type = 4;
+  string description = 5;
+  int64 created_at_epoch_ms = 6;
+
+  string from_account_id = 7;
+  string to_account_id = 8;
+  int64 amount_cents = 9;
+
+  repeated Posting postings = 10;
+}
+
+message AccountLedgerItem {
+  string id = 1;
+  string account_id = 2;
+  string entry_id = 3;
+  int64 created_at_epoch_ms = 4;
+  int64 amount_cents = 5;
+  string counterparty_account_id = 6;
+  int64 seq = 7;
+  string prev_hash = 8;
+  string item_hash = 9;
+  LedgerEntry entry = 10;
+}
+
+message CreateTransferRequest {
+  string from_account_id = 1;
+  string to_account_id = 2;
+  int64 amount_cents = 3;
+  string idempotency_key = 4;
+  string description = 5;
+}
+
+message CreateTransferResponse {
+  LedgerEntry entry = 1;
+  int64 from_balance_cents = 2;
+  int64 to_balance_cents = 3;
+}
+
+message GetBalanceRequest { string account_id = 1; }
+message GetBalanceResponse {
+  string account_id = 1;
+  int64 available_cents = 2;
+}
+
+message GetEntryRequest { string entry_id = 1; }
+message GetEntryResponse { LedgerEntry entry = 1; }
+
+message ListAccountEntriesRequest {
+  string account_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListAccountEntriesResponse { repeated AccountLedgerItem items = 1; }
+
+message GetAccountChainHeadRequest { string account_id = 1; }
+message GetAccountChainHeadResponse {
+  string account_id = 1;
+  int64 head_seq = 2;
+  string head_hash = 3;
+  string head_entry_id = 4;
+}
+
+message VerifyAccountChainRequest { string account_id = 1; }
+message VerifyAccountChainResponse {
+  bool ok = 1;
+  int64 first_invalid_seq = 2;
+  string message = 3;
+}

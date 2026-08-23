@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option java_package = "com.banking.auth.v1";
+option java_multiple_files = true;
+
+service AuthService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse);
+
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+message PingRequest { string message = 1; }
+message PingResponse { string message = 1; }
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterResponse {
+  string user_id = 1;              // UUID as string
+  bool verification_required = 2;  // true
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  bool verification_required = 1;  // if email not verified
+  string access_token = 2;         // JWT when verified
+  int64 access_expires_in_seconds = 3;
+  string refresh_token = 4;        // opaque when verified
+  int64 refresh_expires_in_seconds = 5;
+}
+
+message VerifyEmailRequest {
+  string email = 1;
+  string code = 2; // 6-digit
+}
+
+message VerifyEmailResponse {
+  bool verified = 1;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message RefreshResponse {
+  string access_token = 1;
+  int64 access_expires_in_seconds = 2;
+  string refresh_token = 3;
+  int64 refresh_expires_in_seconds = 4;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  string user_id = 1;
+  string email = 2;
+  string role = 3;
+  bool email_verified = 4;
+}

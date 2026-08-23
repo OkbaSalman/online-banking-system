@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package cards.v1;
+
+option java_package = "com.banking.cards.v1";
+option java_multiple_files = true;
+
+service CardsService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc CreateVirtualCard(CreateVirtualCardRequest) returns (CreateVirtualCardResponse);
+  rpc GetCard(GetCardRequest) returns (GetCardResponse);
+  rpc ListMyCards(ListMyCardsRequest) returns (ListMyCardsResponse);
+
+  rpc FreezeCard(FreezeCardRequest) returns (FreezeCardResponse);
+  rpc UnfreezeCard(UnfreezeCardRequest) returns (UnfreezeCardResponse);
+  rpc SetCardLimits(SetCardLimitsRequest) returns (SetCardLimitsResponse);
+
+  rpc ChargeCard(ChargeCardRequest) returns (ChargeCardResponse);
+  rpc ListMyCharges(ListMyChargesRequest) returns (ListMyChargesResponse);
+}
+
+message PingRequest { string message = 1; }
+message PingResponse { string message = 1; }
+
+enum CardStatus {
+  CARD_STATUS_UNSPECIFIED = 0;
+  CARD_STATUS_ACTIVE = 1;
+  CARD_STATUS_FROZEN = 2;
+  CARD_STATUS_CLOSED = 3;
+}
+
+message Card {
+  string id = 1;
+  string user_id = 2;
+  string funding_account_id = 3;
+  string last4 = 4;
+  CardStatus status = 5;
+  int64 created_at_epoch_ms = 6;
+  string nickname = 7;
+  int64 daily_limit_cents = 8;
+  int64 monthly_limit_cents = 9;
+  int64 per_transaction_limit_cents = 10;
+}
+
+enum CardChargeStatus {
+  CARD_CHARGE_STATUS_UNSPECIFIED = 0;
+  CARD_CHARGE_STATUS_PENDING = 1;
+  CARD_CHARGE_STATUS_COMPLETED = 2;
+  CARD_CHARGE_STATUS_BLOCKED = 3;
+  CARD_CHARGE_STATUS_FAILED = 4;
+}
+
+message CardCharge {
+  string id = 1;
+  string user_id = 2;
+  string card_id = 3;
+  string merchant_account_id = 4;
+  int64 amount_cents = 5;
+  int64 created_at_epoch_ms = 6;
+  CardChargeStatus status = 7;
+  string idempotency_key = 8;
+  string description = 9;
+  string transfer_id = 10;
+  string failure_message = 11;
+  int64 fee_cents = 12;
+}
+
+message CreateVirtualCardRequest {
+  string funding_account_id = 1;
+  string idempotency_key = 2;
+  string nickname = 3;
+  int64 daily_limit_cents = 4;
+  int64 monthly_limit_cents = 5;
+  int64 per_transaction_limit_cents = 6;
+}
+
+message CreateVirtualCardResponse {
+  Card card = 1;
+}
+
+message GetCardRequest {
+  string card_id = 1;
+}
+
+message GetCardResponse {
+  Card card = 1;
+}
+
+message ListMyCardsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListMyCardsResponse {
+  repeated Card cards = 1;
+}
+
+message FreezeCardRequest {
+  string card_id = 1;
+}
+
+message FreezeCardResponse {
+  Card card = 1;
+}
+
+message UnfreezeCardRequest {
+  string card_id = 1;
+}
+
+message UnfreezeCardResponse {
+  Card card = 1;
+}
+
+message SetCardLimitsRequest {
+  string card_id = 1;
+  int64 daily_limit_cents = 2;
+  int64 monthly_limit_cents = 3;
+  int64 per_transaction_limit_cents = 4;
+}
+
+message SetCardLimitsResponse {
+  Card card = 1;
+}
+
+message ChargeCardRequest {
+  string card_id = 1;
+  string merchant_account_id = 2;
+  int64 amount_cents = 3;
+  string idempotency_key = 4;
+  string description = 5;
+}
+
+message ChargeCardResponse {
+  CardCharge charge = 1;
+}
+
+message ListMyChargesRequest {
+  string card_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListMyChargesResponse {
+  repeated CardCharge charges = 1;
+}

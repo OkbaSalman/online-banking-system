@@ -1,0 +1,254 @@
+services:
+  auth-service:
+    image: eclipse-temurin:21-jre
+    container_name: auth-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/auth-service.jar:/app/app.jar:ro
+      - ./secrets:/secrets:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9101
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: auth
+      SPRING_DATASOURCE_PASSWORD: auth_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      JWT_PRIVATE_KEY_PATH: /secrets/auth-private.pem
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms128m -Xmx384m"
+      OTEL_SERVICE_NAME: auth-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  accounts-service:
+    image: eclipse-temurin:21-jre
+    container_name: accounts-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/accounts-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9102
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/accounts_db
+      SPRING_DATASOURCE_USERNAME: accounts
+      SPRING_DATASOURCE_PASSWORD: accounts_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      SPRING_GRPC_CLIENT_CHANNELS_AUTH_ADDRESS: auth-service:9101
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx128m"
+      OTEL_SERVICE_NAME: accounts-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  ledger-service:
+    image: eclipse-temurin:21-jre
+    container_name: ledger-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/ledger-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9105
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/ledger_db
+      SPRING_DATASOURCE_USERNAME: ledger
+      SPRING_DATASOURCE_PASSWORD: ledger_db
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx128m"
+      OTEL_SERVICE_NAME: ledger-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  transfers-service:
+    image: eclipse-temurin:21-jre
+    container_name: transfers-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/transfers-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9104
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/transfers_db
+      SPRING_DATASOURCE_USERNAME: transfers
+      SPRING_DATASOURCE_PASSWORD: transfers_db
+      SPRING_GRPC_CLIENT_CHANNELS_LEDGER_ADDRESS: ledger-service:9105
+      SPRING_GRPC_CLIENT_CHANNELS_ACCOUNTS_ADDRESS: accounts-service:9102
+      SPRING_GRPC_CLIENT_CHANNELS_KYC_ADDRESS: kyc-service:9103
+      TRANSFERS_TREASURY_ACCOUNT_ID: 00000000-0000-0000-0000-000000000001
+      TRANSFERS_REVENUE_ACCOUNT_ID: 00000000-0000-0000-0000-000000000002
+
+      # AML (cents). Override in .env without rebuilding the jar.
+      AML_MAX_SINGLE_TRANSFER_CENTS: ${AML_MAX_SINGLE_TRANSFER_CENTS:-5000000}
+      AML_VELOCITY_WINDOW_MS: ${AML_VELOCITY_WINDOW_MS:-600000}
+      AML_VELOCITY_MAX_COUNT: ${AML_VELOCITY_MAX_COUNT:-50}
+
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx160m"
+      OTEL_SERVICE_NAME: transfers-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  kyc-service:
+    image: eclipse-temurin:21-jre
+    container_name: kyc-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/kyc-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9103
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/kyc_db
+      SPRING_DATASOURCE_USERNAME: kyc
+      SPRING_DATASOURCE_PASSWORD: kyc_db
+      SPRING_GRPC_CLIENT_CHANNELS_AUTH_ADDRESS: auth-service:9101
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESSKEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRETKEY: ${MINIO_ROOT_PASSWORD:-change-me}
+      MINIO_BUCKET: kyc-documents
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx128m"
+      OTEL_SERVICE_NAME: kyc-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  billing-service:
+    image: eclipse-temurin:21-jre
+    container_name: billing-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/billing-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9106
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/billing_db
+      SPRING_DATASOURCE_USERNAME: billing
+      SPRING_DATASOURCE_PASSWORD: billing_db
+      SPRING_GRPC_CLIENT_CHANNELS_TRANSFERS_ADDRESS: transfers-service:9104
+      SPRING_GRPC_CLIENT_CHANNELS_KYC_ADDRESS: kyc-service:9103
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx160m"
+      OTEL_SERVICE_NAME: billing-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  cards-service:
+    image: eclipse-temurin:21-jre
+    container_name: cards-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/cards-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_GRPC_SERVER_PORT: 9107
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/cards_db
+      SPRING_DATASOURCE_USERNAME: cards
+      SPRING_DATASOURCE_PASSWORD: cards_db
+      SPRING_GRPC_CLIENT_CHANNELS_TRANSFERS_ADDRESS: transfers-service:9104
+      SPRING_GRPC_CLIENT_CHANNELS_KYC_ADDRESS: kyc-service:9103
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms64m -Xmx160m"
+      OTEL_SERVICE_NAME: cards-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mailhog
+    ports:
+      - "8025:8025"
+    networks: [banking-net]
+    restart: unless-stopped
+  notifications-service:
+    image: eclipse-temurin:21-jre
+    container_name: notifications-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/notifications-service.jar:/app/app.jar:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms32m -Xmx96m"
+      OTEL_SERVICE_NAME: notifications-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    networks: [banking-net]
+    restart: unless-stopped
+  gateway-service:
+    image: eclipse-temurin:21-jre
+    container_name: gateway-service
+    working_dir: /app
+    volumes:
+      - ./deploy/jars/gateway-service.jar:/app/app.jar:ro
+      - ./secrets:/secrets:ro
+      - ./otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+    environment:
+      SERVER_PORT: 8080
+      SPRING_GRPC_CLIENT_CHANNELS_ACCOUNTS_ADDRESS: accounts-service:9102
+      SPRING_GRPC_CLIENT_CHANNELS_AUTH_ADDRESS: auth-service:9101
+      SPRING_GRPC_CLIENT_CHANNELS_KYC_ADDRESS: kyc-service:9103
+      SPRING_GRPC_CLIENT_CHANNELS_TRANSFERS_ADDRESS: transfers-service:9104
+      SPRING_GRPC_CLIENT_CHANNELS_LEDGER_ADDRESS: ledger-service:9105
+      SPRING_GRPC_CLIENT_CHANNELS_BILLING_ADDRESS: billing-service:9106
+      SPRING_GRPC_CLIENT_CHANNELS_CARDS_ADDRESS: cards-service:9107
+      JWT_PUBLIC_KEY_PATH: /secrets/auth-public.pem
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xms128m -Xmx384m"
+      OTEL_SERVICE_NAME: gateway-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    command: ["java", "-jar", "/app/app.jar"]
+    ports:
+      - "8080:8080"
+    networks: [banking-net]
+    restart: unless-stopped
+networks:
+  banking-net:
+    external: true

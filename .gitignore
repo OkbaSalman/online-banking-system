@@ -1,0 +1,86 @@
+# Java / Maven build output
+**/target/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# Deployment packages and generated binaries
+deploy/
+deploy.tgz
+*.tgz
+*.tar.gz
+*.zip
+**/opentelemetry-javaagent*.jar
+presentation-assets/
+ops/
+*.pptx
+
+# Secrets and local environment configuration
+secrets/
+**/.env
+**/.env.*
+**/*.env
+!**/.env.example
+!**/*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials*.json
+
+# Database backups and local data
+backup/
+backups/
+*.dump
+*.backup
+*-backup.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Generated thesis/documentation output
+docs/*.docx
+docs/*.pdf
+docs/*.png
+!docs/project-report.pdf
+
+# Keep the public repository documentation intentionally small
+**/*.md
+!/README.md
+**/*.txt
+
+# Docker deployment files are local-only; sanitized examples are allowed
+**/Dockerfile
+**/Dockerfile.*
+**/docker-compose*.yml
+!examples/docker/*.example.yml
+
+# Logs, runtime and temporary files
+*.log
+logs/
+*.pid
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE and editor metadata
+**/.idea/
+**/.vscode/
+**/.cursor/
+**/.classpath
+**/.project
+**/.settings/
+**/*.iml
+
+# Python cache (documentation generators)
+**/__pycache__/
+**/*.py[cod]
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini

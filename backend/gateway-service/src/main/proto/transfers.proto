@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package transfers.v1;
+
+import "ledger.proto";
+
+option java_package = "com.banking.transfers.v1";
+option java_multiple_files = true;
+
+service TransfersService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse);
+  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse);
+
+  rpc ListMyTransfers(ListMyTransfersRequest) returns (ListMyTransfersResponse);
+
+  rpc AdminListTransfers(AdminListTransfersRequest) returns (AdminListTransfersResponse);
+  rpc AdminGetRevenueSummary(AdminGetRevenueSummaryRequest) returns (AdminGetRevenueSummaryResponse);
+
+  rpc AdminMint(AdminMintRequest) returns (AdminMintResponse);
+}
+
+message PingRequest {
+  string message = 1;
+}
+
+message PingResponse {
+  string message = 1;
+}
+
+enum TransferStatus {
+  TRANSFER_STATUS_UNSPECIFIED = 0;
+  TRANSFER_STATUS_PENDING = 1;
+  TRANSFER_STATUS_COMPLETED = 2;
+  TRANSFER_STATUS_BLOCKED = 3;
+  TRANSFER_STATUS_FAILED = 4;
+}
+
+message Transfer {
+  string id = 1;
+  string initiator_user_id = 2;
+  string from_account_id = 3;
+  string to_account_id = 4;
+  int64 amount_cents = 5;
+  string idempotency_key = 6;
+  string description = 7;
+  int64 created_at_epoch_ms = 8;
+  TransferStatus status = 9;
+  string ledger_entry_id = 10;
+  string failure_message = 11;
+  int64 fee_cents = 12;
+  string fee_ledger_entry_id = 13;
+}
+
+message CreateTransferRequest {
+  string from_account_id = 1;
+  string to_account_id = 2;
+  int64 amount_cents = 3;
+  string idempotency_key = 4;
+  string description = 5;
+}
+
+message CreateTransferResponse {
+  Transfer transfer = 1;
+  ledger.v1.LedgerEntry entry = 2;
+  int64 from_balance_cents = 3;
+  int64 to_balance_cents = 4;
+}
+
+message GetTransferRequest {
+  string transfer_id = 1;
+}
+
+message GetTransferResponse {
+  Transfer transfer = 1;
+}
+
+message ListMyTransfersRequest {
+  TransferStatus status = 1;
+  string from_account_id = 2;
+  string to_account_id = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message ListMyTransfersResponse {
+  repeated Transfer transfers = 1;
+}
+
+message AdminListTransfersRequest {
+  TransferStatus status = 1;
+  string initiator_user_id = 2;
+  string from_account_id = 3;
+  string to_account_id = 4;
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+message AdminListTransfersResponse {
+  repeated Transfer transfers = 1;
+}
+
+message AdminGetRevenueSummaryRequest {
+  int32 year = 1;
+  int32 month = 2;
+}
+
+message MonthlyRevenueBucket {
+  int32 year = 1;
+  int32 month = 2;
+  int64 fee_cents = 3;
+  int64 volume_cents = 4;
+  int32 transfer_count = 5;
+}
+
+message AdminGetRevenueSummaryResponse {
+  int32 year = 1;
+  int32 month = 2;
+  int64 fee_cents = 3;
+  int64 volume_cents = 4;
+  int32 transfer_count = 5;
+  repeated MonthlyRevenueBucket months = 6;
+}
+
+message AdminMintRequest {
+  string to_account_id = 1;
+  int64 amount_cents = 2;
+  string idempotency_key = 3;
+  string description = 4;
+}
+
+message AdminMintResponse {
+  Transfer transfer = 1;
+  ledger.v1.LedgerEntry entry = 2;
+  int64 treasury_balance_cents = 3;
+  int64 to_balance_cents = 4;
+}

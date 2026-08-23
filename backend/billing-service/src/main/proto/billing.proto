@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option java_package = "com.banking.billing.v1";
+option java_multiple_files = true;
+
+service BillingService {
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  rpc PayBill(PayBillRequest) returns (PayBillResponse);
+
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  rpc ListMySubscriptions(ListMySubscriptionsRequest) returns (ListMySubscriptionsResponse);
+
+  rpc ListMyPayments(ListMyPaymentsRequest) returns (ListMyPaymentsResponse);
+}
+
+message PingRequest { string message = 1; }
+message PingResponse { string message = 1; }
+
+enum BillingPaymentStatus {
+  BILLING_PAYMENT_STATUS_UNSPECIFIED = 0;
+  BILLING_PAYMENT_STATUS_PENDING = 1;
+  BILLING_PAYMENT_STATUS_COMPLETED = 2;
+  BILLING_PAYMENT_STATUS_BLOCKED = 3;
+  BILLING_PAYMENT_STATUS_FAILED = 4;
+}
+
+message BillingPayment {
+  string id = 1;
+  string user_id = 2;
+  string from_account_id = 3;
+  string merchant_account_id = 4;
+  int64 amount_cents = 5;
+  int64 created_at_epoch_ms = 6;
+  BillingPaymentStatus status = 7;
+  string idempotency_key = 8;
+  string description = 9;
+  string transfer_id = 10;
+  string failure_message = 11;
+  string subscription_id = 12;
+}
+
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATUS_ACTIVE = 1;
+  SUBSCRIPTION_STATUS_PAUSED = 2;
+  SUBSCRIPTION_STATUS_CANCELED = 3;
+}
+
+enum IntervalUnit {
+  INTERVAL_UNIT_UNSPECIFIED = 0;
+  INTERVAL_UNIT_DAY = 1;
+  INTERVAL_UNIT_WEEK = 2;
+  INTERVAL_UNIT_MONTH = 3;
+}
+
+message Subscription {
+  string id = 1;
+  string user_id = 2;
+  string from_account_id = 3;
+  string merchant_account_id = 4;
+  int64 amount_cents = 5;
+  IntervalUnit interval_unit = 6;
+  int32 interval_count = 7;
+  int64 next_charge_at_epoch_ms = 8;
+  SubscriptionStatus status = 9;
+  int64 created_at_epoch_ms = 10;
+  string idempotency_key = 11;
+  string description = 12;
+}
+
+message PayBillRequest {
+  string from_account_id = 1;
+  string merchant_account_id = 2;
+  int64 amount_cents = 3;
+  string idempotency_key = 4;
+  string description = 5;
+}
+
+message PayBillResponse {
+  BillingPayment payment = 1;
+}
+
+message CreateSubscriptionRequest {
+  string from_account_id = 1;
+  string merchant_account_id = 2;
+  int64 amount_cents = 3;
+  IntervalUnit interval_unit = 4;
+  int32 interval_count = 5;
+  int64 start_at_epoch_ms = 6;
+  string idempotency_key = 7;
+  string description = 8;
+}
+
+message CreateSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message CancelSubscriptionRequest {
+  string subscription_id = 1;
+}
+
+message CancelSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message GetSubscriptionRequest {
+  string subscription_id = 1;
+}
+
+message GetSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message ListMySubscriptionsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListMySubscriptionsResponse {
+  repeated Subscription subscriptions = 1;
+}
+
+message ListMyPaymentsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListMyPaymentsResponse {
+  repeated BillingPayment payments = 1;
+}
