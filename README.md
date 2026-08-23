@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="frontend/public/favicon.svg" width="92" alt="Online Banking System logo" />
+  <img src="frontend/public/favicon.svg" width="96" alt="Online Banking System logo" />
 
   # Online Banking System
 
-  **A production-ready banking platform built as a secure, observable microservices system.**
+  **A secure, observable banking platform built with microservices, hexagonal architecture, and a tamper-evident financial ledger.**
 
   [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
   [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -14,55 +14,172 @@
   ![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-6C63FF?style=flat-square)
   ![Services](https://img.shields.io/badge/Design-Microservices-0F172A?style=flat-square)
   ![Events](https://img.shields.io/badge/Messaging-Event--Driven-22C55E?style=flat-square)
+  ![Ledger](https://img.shields.io/badge/Ledger-SHA--256_Hash_Chained-DC2626?style=flat-square)
   ![Observability](https://img.shields.io/badge/Observability-OpenTelemetry-F59E0B?style=flat-square)
 
-  A complete banking backend and web application that student projects can reuse as a realistic payment and financial-services layer.
+  Accounts, transfers, cards, billing, compliance, administration, and a cryptographically linked ledger—built as one complete banking platform.
 </div>
 
 ---
 
-## Why this project exists
+## Overview
 
-Student marketplaces, booking systems, stores, and subscription applications often stop at a simulated checkout. This project supplies the missing financial layer: real account balances, transfers, cards, billing, compliance, receipts, and an auditable ledger behind one HTTP gateway.
+Online Banking System is a full-stack banking platform composed of independently deployable Spring Boot services and a React client.
 
-It is designed as both a working banking application and a reusable foundation for projects that need production-style payment behavior.
+It covers the complete banking lifecycle:
 
-## Highlights
+- Identity, authentication, and account recovery
+- Checking, savings, and shared accounts
+- Account invitations and membership management
+- Policy-controlled money transfers
+- Double-entry accounting
+- Account-scoped SHA-256 hash chains
+- Virtual cards and spending controls
+- Bills and recurring subscriptions
+- KYC document submission and review
+- Administrative and treasury operations
+- Event-driven email notifications
+- Distributed tracing, metrics, and logs
+
+The platform combines synchronous gRPC communication, Kafka-driven workflows, database-per-service persistence, MinIO document storage, RS256 authentication, and OpenTelemetry instrumentation behind a single reactive HTTP gateway.
+
+## Core capabilities
 
 | | Capability | What it provides |
 |---|---|---|
-| 👥 | **Shared accounts** | Checking and savings accounts, invitations, ownership, members, display names, and account freezing |
-| 💸 | **Safe transfers** | Fees, receipts, KYC checks, AML limits, savings rules, idempotency, and transfer history |
-| 🔗 | **Tamper-evident ledger** | Double-entry records, account-scoped hash chains, balance calculation, and integrity verification |
-| 💳 | **Virtual cards** | Card issuance, freeze/unfreeze controls, spending limits, and merchant charges |
-| 🔁 | **Billing automation** | One-time bill payment, subscriptions, scheduled charging, and retry state |
-| 🪪 | **KYC workflow** | Document upload, MinIO-backed storage, submission, and administrator review |
-| 🛡️ | **Identity and access** | Email verification, RS256 JWTs, refresh rotation, password reset, and role-based authorization |
-| 📈 | **Operational visibility** | Actuator health metrics and OpenTelemetry traces, metrics, and logs |
+| ⛓️ | **Account-scoped hash chains** | SHA-256-linked postings, independent chain heads, complete verification, and exact break detection |
+| 📒 | **Double-entry ledger** | Balanced debit and credit postings, authoritative balances, auditable history, and idempotent writes |
+| 👥 | **Shared accounts** | Checking and savings accounts, invitations, owners, members, display names, and freezing |
+| 💸 | **Policy-controlled transfers** | Fees, receipts, KYC checks, AML rules, savings limits, idempotency, and history |
+| 💳 | **Virtual cards** | Card issuance, freeze/unfreeze controls, spending limits, merchant charges, and charge history |
+| 🔁 | **Billing automation** | One-time bill payments, recurring subscriptions, scheduled charging, cancellation, and retries |
+| 🪪 | **KYC and compliance** | Document slots, presigned uploads, MinIO storage, submission, approval, and rejection |
+| 🛡️ | **Identity and access** | Verification, RS256 JWTs, refresh rotation, password recovery, and role-based authorization |
+| 🏦 | **Administration** | User blocking, account freezing, KYC review, treasury minting, and revenue reporting |
+| 📈 | **Operational visibility** | Health endpoints, distributed traces, metrics, logs, and service-level monitoring |
 
-## Architecture
-The frontend communicates only with the reactive HTTP gateway. The gateway validates access tokens and translates HTTP requests into internal gRPC calls. Each domain service owns its data and exposes focused use cases through ports and adapters.
+---
+
+## Tamper-evident ledger
+
+The ledger does more than persist transactions.
+
+Every financial movement creates balanced debit and credit postings. Each posting is also appended to an independent cryptographic chain belonging to the affected account.
 
 ```text
-React client
-    │ HTTP
-    ▼
-API Gateway
-    │ gRPC
-    ├── Authentication
-    ├── Accounts
-    ├── KYC
-    ├── Transfers ──► Ledger
-    ├── Cards ──────► Transfers
-    └── Billing ────► Transfers
+ACCOUNT A
 
-Kafka ──► Notifications
-PostgreSQL │ MinIO │ OpenTelemetry
+┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
+│ Sequence 1         │     │ Sequence 2         │     │ Sequence 3         │
+│ prev: GENESIS      │────►│ prev: hash(1)      │────►│ prev: hash(2)      │
+│ hash: 7f4a...      │     │ hash: a91c...      │     │ hash: e203...      │
+└────────────────────┘     └────────────────────┘     └────────────────────┘
+                                                               │
+                                                               ▼
+                                                     Chain head: e203...
 ```
 
-### Hexagonal architecture, service by service
+### What each hash protects
 
-This is not a CRUD-only microservices demo. Every core backend service is organized around **hexagonal architecture (ports and adapters)**, keeping business rules independent from gRPC, databases, Kafka, and external services.
+Every item hash is calculated using SHA-256 over a canonical representation containing:
+
+```text
+previous hash
+  + account ID
+  + sequence number
+  + ledger item ID
+  + ledger entry ID
+  + creation timestamp
+  + signed posting amount
+  + counterparty account
+  + idempotency key
+  + source account
+  + destination account
+  + transfer amount
+  + description
+```
+
+This means changing an old amount, timestamp, account, counterparty, description, identifier, or previous link produces a different hash.
+
+Once an old item changes, the next item’s `prevHash` no longer matches, revealing exactly where ledger integrity was lost.
+
+### Chain verification
+
+The verification process:
+
+1. Loads all account postings in sequence order.
+2. Detects missing, duplicated, or reordered sequence numbers.
+3. Rebuilds the canonical payload for every item.
+4. Recomputes each SHA-256 hash.
+5. Validates every `prevHash → itemHash` relationship.
+6. Returns the first invalid sequence when verification fails.
+
+A separately locked chain-head record tracks the latest sequence and hash while new postings are appended.
+
+The React application includes an animated ledger visualizer that walks through the chain block by block, compares adjacent links, calls server-side verification, and highlights the first broken sequence.
+
+> This is a **tamper-evident ledger**, not a blockchain. It uses deterministic account-level hash chaining to reveal unauthorized historical changes without introducing distributed consensus.
+
+---
+
+## Architecture
+
+<div align="center">
+  <img src="docs/banking-system-architecture.svg" width="100%" alt="Online Banking System architecture" />
+</div>
+
+The React client communicates exclusively with the reactive HTTP gateway.
+
+The gateway authenticates requests, applies authorization rules, validates input, and translates external HTTP operations into typed internal gRPC calls.
+
+Each service owns its domain, persistence, schema migrations, and application use cases.
+
+```text
+React Client
+     │
+     │ HTTP / JSON
+     ▼
+┌─────────────────────┐
+│    API Gateway      │
+│ Security · OpenAPI  │
+│ Validation · Errors │
+└──────────┬──────────┘
+           │ gRPC / Protobuf
+           ▼
+┌─────────────────────────────────────────────────────┐
+│ Auth │ Accounts │ KYC │ Transfers │ Ledger          │
+│ Cards │ Billing │ Notifications                     │
+└─────────────────────────────────────────────────────┘
+           │
+           ├── PostgreSQL databases
+           ├── Kafka events
+           ├── MinIO documents
+           ├── SMTP notifications
+           └── OpenTelemetry
+```
+
+### Service communication
+
+```text
+Gateway ─────► Auth
+        ├────► Accounts ─────► Auth
+        ├────► KYC ──────────► Auth
+        ├────► Transfers ────► Accounts
+        │                ├───► KYC
+        │                └───► Ledger
+        ├────► Cards ─────────► Transfers
+        │                └───► KYC
+        └────► Billing ───────► Transfers
+                         └────► KYC
+
+Auth / Accounts / KYC ──Kafka──► Notifications
+```
+
+---
+
+## Hexagonal architecture
+
+Every core backend service follows **hexagonal architecture**, also known as ports and adapters.
 
 ```text
                     ┌─────────────────────────────┐
@@ -75,7 +192,7 @@ This is not a CRUD-only microservices demo. Every core backend service is organi
                     └──────────────┬──────────────┘
                                    ▼
                     ┌─────────────────────────────┐
-                    │      Domain model           │
+                    │        Domain model         │
                     │ rules • invariants • state  │
                     └──────────────┬──────────────┘
                                    ▼
@@ -86,84 +203,126 @@ This is not a CRUD-only microservices demo. Every core backend service is organi
                       PostgreSQL    gRPC / Kafka
 ```
 
-The domain and use-case layers depend on interfaces, while adapters handle framework-specific details. That makes the financial rules easier to test, replace, and evolve without coupling them to infrastructure.
+The domain and application layers depend on interfaces rather than infrastructure.
 
-### Engineering highlights
+JPA, Kafka, gRPC, MinIO, and external service integrations are implemented as adapters outside the business core. This keeps financial rules isolated from framework-specific code and makes infrastructure replaceable.
+
+---
+
+## Engineering highlights
 
 | | Design choice | Why it matters |
 |---|---|---|
-| 🧩 | **Ports and adapters** | JPA, Kafka, gRPC, and storage integrations sit outside the business core |
-| 📜 | **Contract-first gRPC** | Protobuf contracts define typed communication between services |
-| 🗃️ | **Database per service** | Each service owns its schema and evolves it through Flyway migrations |
-| ⚡ | **Event-driven notifications** | Kafka separates email delivery from account, authentication, and KYC workflows |
-| 🧭 | **Transfer orchestration** | One flow coordinates identity, KYC, AML, account rules, fees, and ledger posting |
-| ♻️ | **Idempotent operations** | Repeated requests cannot create duplicate accounts, transfers, charges, or ledger entries |
-| 🔐 | **Separated signing keys** | The auth service signs tokens; the gateway only receives the public verification key |
-| 🔎 | **End-to-end observability** | OpenTelemetry connects traces, metrics, and logs across service boundaries |
-| ⏱️ | **Resilient scheduled jobs** | Subscription retries and savings-interest payouts run as controlled background workflows |
-| 🧱 | **Centralized API boundary** | The reactive gateway owns authentication, authorization, validation, CORS, OpenAPI, and error mapping |
+| ⛓️ | **Account-level hash chaining** | Recomputed SHA-256 chains expose historical ledger changes and identify the first invalid sequence |
+| 📒 | **Double-entry accounting** | Every movement produces balanced debit and credit postings |
+| 🧩 | **Ports and adapters** | JPA, Kafka, gRPC, and storage integrations remain outside the business core |
+| 📜 | **Contract-first gRPC** | Protobuf contracts provide typed communication between services |
+| 🗃️ | **Database per service** | Services independently own and migrate their schemas through Flyway |
+| ⚡ | **Event-driven notifications** | Kafka separates email delivery from authentication, account, and KYC workflows |
+| 🧭 | **Transfer orchestration** | One flow coordinates KYC, AML, ownership, balances, fees, savings rules, and ledger posting |
+| ♻️ | **Idempotent operations** | Repeated requests cannot duplicate accounts, transfers, charges, bills, or ledger entries |
+| 🔐 | **Separated signing keys** | Auth signs tokens privately while the gateway receives only the public verification key |
+| 🔎 | **End-to-end observability** | OpenTelemetry correlates traces, metrics, and logs across service boundaries |
+| ⏱️ | **Scheduled financial jobs** | Subscription charging, retry processing, and savings-interest payouts run automatically |
+| 🧱 | **Centralized API boundary** | The gateway owns authentication, authorization, validation, CORS, OpenAPI, and error mapping |
 
-### What happens during a transfer?
+---
+
+## Transfer lifecycle
 
 ```text
 1. Gateway verifies the RS256 access token
                      │
-2. Transfers service checks KYC and AML rules
+2. Transfers service validates the request
                      │
-3. Accounts service validates ownership and debit rules
+3. KYC approval and AML policies are checked
                      │
-4. Fee and savings limits are calculated
+4. Accounts service verifies ownership and debit eligibility
                      │
-5. Ledger service records an idempotent double entry
+5. Fees and savings withdrawal limits are calculated
                      │
-6. Hash-linked entries preserve evidence of the result
+6. Ledger service records an idempotent double entry
+                     │
+7. Both account postings extend independent SHA-256 chains
+                     │
+8. The final result becomes queryable and observable
 ```
 
-The result is a financial operation that is authenticated, policy-checked, replay-safe, auditable, and observable across services.
+The resulting operation is authenticated, authorized, policy-checked, replay-safe, double-entered, hash-linked, auditable, and observable.
 
-### Backend services
+---
+
+## Backend services
 
 | Service | Responsibility |
 |---|---|
-| `gateway-service` | Reactive HTTP API, JWT validation, authorization, OpenAPI, and HTTP-to-gRPC mapping |
-| `auth-service` | Registration, verification, login, refresh tokens, password recovery, and user administration |
-| `accounts-service` | Accounts, memberships, invitations, names, debit checks, and account state |
-| `kyc-service` | KYC applications, document storage, submission, and review |
-| `transfers-service` | Transfer orchestration, AML rules, fees, savings limits, minting, and interest payouts |
-| `ledger-service` | Double-entry records, balances, entry history, and chained-hash verification |
-| `cards-service` | Virtual cards, card state, spending limits, and charges |
-| `billing-service` | Bills, subscriptions, scheduled charges, and retries |
-| `notifications-service` | Kafka-driven email delivery |
+| `gateway-service` | Reactive HTTP API, JWT verification, authorization, OpenAPI, validation, and HTTP-to-gRPC mapping |
+| `auth-service` | Registration, verification, login, refresh rotation, password recovery, and user administration |
+| `accounts-service` | Checking and savings accounts, shared ownership, invitations, names, debit checks, and freezing |
+| `kyc-service` | KYC applications, document storage, submission, status tracking, and administrator review |
+| `transfers-service` | Transfer orchestration, AML rules, fees, savings limits, treasury minting, and interest payouts |
+| `ledger-service` | Double-entry records, balances, account histories, hash-chain creation, and integrity verification |
+| `cards-service` | Virtual cards, freezing, spending limits, merchant charges, and charge history |
+| `billing-service` | Bill payments, subscriptions, scheduled charges, cancellation, and retry handling |
+| `notifications-service` | Kafka-driven email delivery through SMTP |
+
+---
 
 ## Trust by design
 
-- **RS256 authentication** keeps token signing and verification keys separate.
-- **Role-based access control** protects customer and administrator operations.
-- **KYC gates** are enforced before transfers, card charges, and billing operations.
-- **AML controls** enforce amount and velocity rules.
+- **RS256 authentication** separates token signing from token verification.
+- **Refresh-token rotation** limits long-lived session exposure.
+- **Role-based access control** separates customer and administrator operations.
+- **KYC gates** protect transfers, card charges, and billing operations.
+- **AML rules** enforce transfer amount and velocity limits.
+- **Account ownership checks** prevent unauthorized debits.
 - **Idempotency keys** prevent duplicate financial operations.
 - **Double-entry accounting** records both sides of every movement.
-- **Hash-linked ledger entries** reveal changes to previously recorded transactions.
-- **Database-per-service isolation** limits coupling and data ownership ambiguity.
-- **Secrets and generated keys stay outside Git** through environment variables and ignored local files.
+- **Account-scoped SHA-256 chains** bind every posting to its payload and predecessor.
+- **Chain verification** detects changed data, reordered entries, sequence gaps, and broken links.
+- **Database-per-service isolation** establishes clear data ownership.
+- **Secrets and generated keys remain outside Git** through ignored files and environment configuration.
 
-## Technology
+---
 
-**Backend**
+## Technology stack
 
-- Java 21 and Spring Boot 4
-- Spring gRPC and Protocol Buffers
-- Spring Security and OAuth2 Resource Server
-- Spring Data JPA and Flyway
-- Kafka, PostgreSQL, MinIO, and SMTP
-- OpenTelemetry and Spring Boot Actuator
+### Backend
 
-**Frontend**
+- Java 21
+- Spring Boot 4
+- Spring gRPC
+- Protocol Buffers
+- Spring Security
+- OAuth2 Resource Server
+- Spring Data JPA
+- Flyway
+- PostgreSQL
+- Apache Kafka
+- MinIO
+- OpenTelemetry
+- Spring Boot Actuator
 
-- React 19 and React Router
+### Frontend
+
+- React 19
+- React Router
 - Vite 6
 - Tailwind CSS 4
-- Axios, Motion, and Lucide icons
+- Axios
+- Motion
+- Lucide icons
+
+### Infrastructure
+
+- Docker Compose
+- PostgreSQL 15
+- Apache Kafka
+- MinIO
+- Grafana OpenTelemetry LGTM
+- MailHog
+
+---
 
 ## Repository structure
 
@@ -186,12 +345,14 @@ The result is a financial operation that is authenticated, policy-checked, repla
 ├── examples/
 │   ├── docker/
 │   └── minio/
-├── deploy/jars/          # created locally; gitignored
-├── secrets/              # created locally; gitignored
-├── otel/                 # created locally; agent JAR is gitignored
+├── deploy/jars/          # generated locally; ignored by Git
+├── secrets/              # generated locally; ignored by Git
+├── otel/                 # generated locally; ignored by Git
 ├── .env.example
 └── README.md
 ```
+
+---
 
 ## Local setup
 
@@ -201,9 +362,9 @@ The result is a financial operation that is authenticated, policy-checked, repla
 - Node.js and npm
 - Docker Desktop with Docker Compose
 - OpenSSL
-- MinIO Client (`mc`) for KYC bucket setup
+- MinIO Client (`mc`)
 
-Run every command below from the repository root—the directory containing `backend/`, `frontend/`, and `examples/`.
+Run the commands from the repository root.
 
 ### 1. Prepare local configuration
 
@@ -212,24 +373,32 @@ Copy-Item .env.example .env
 New-Item -ItemType Directory -Force secrets, deploy/jars, otel
 ```
 
-The root environment template contains local CORS, Kafka, and AML settings. Credentials in the example Compose files are development defaults and must be replaced before using the system outside a local machine.
-
 ### 2. Generate JWT keys
 
 ```powershell
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out secrets/auth-private.pem
-openssl rsa -pubout -in secrets/auth-private.pem -out secrets/auth-public.pem
+openssl genpkey `
+  -algorithm RSA `
+  -pkeyopt rsa_keygen_bits:2048 `
+  -out secrets/auth-private.pem
+
+openssl rsa `
+  -pubout `
+  -in secrets/auth-private.pem `
+  -out secrets/auth-public.pem
 ```
 
-### 3. Start infrastructure
+### 3. Start the infrastructure
 
 ```powershell
-docker compose --project-directory . -f examples/docker/docker-compose.infrastructure.example.yml up -d
+docker compose `
+  --project-directory . `
+  -f examples/docker/docker-compose.infrastructure.example.yml `
+  up -d
 ```
 
-This starts PostgreSQL, Kafka, MinIO, and the OpenTelemetry LGTM stack. Leave it running for the remaining steps.
+This starts PostgreSQL, Kafka, MinIO, and the OpenTelemetry LGTM stack.
 
-### 4. Prepare MinIO for KYC uploads
+### 4. Prepare MinIO
 
 ```powershell
 mc alias set banking http://localhost:9000 minioadmin change-me
@@ -237,12 +406,11 @@ mc mb --ignore-existing banking/kyc-documents
 mc cors set banking/kyc-documents examples/minio/cors.xml
 ```
 
-If you override the MinIO credentials in `.env`, use those values here too.
-
 ### 5. Build the backend
 
 ```powershell
 $ErrorActionPreference = "Stop"
+
 $services = @(
   "auth-service",
   "accounts-service",
@@ -257,8 +425,10 @@ $services = @(
 
 foreach ($service in $services) {
   Push-Location "backend/$service"
+
   try {
     .\mvnw.cmd clean package -DskipTests
+
     if ($LASTEXITCODE -ne 0) {
       throw "Build failed for $service"
     }
@@ -280,7 +450,7 @@ foreach ($service in $services) {
 }
 ```
 
-### 6. Enable OpenTelemetry
+### 6. Download the OpenTelemetry agent
 
 ```powershell
 Invoke-WebRequest `
@@ -290,19 +460,12 @@ Invoke-WebRequest `
 
 ### 7. Start the backend
 
-Before continuing, confirm that the infrastructure stack is running and that the JWT keys, nine service JARs, and OpenTelemetry agent were created by the previous steps.
-
 ```powershell
-docker compose --project-directory . -f examples/docker/docker-compose.apps.example.yml up -d
+docker compose `
+  --project-directory . `
+  -f examples/docker/docker-compose.apps.example.yml `
+  up -d
 ```
-
-Local endpoints:
-
-- Gateway API: `http://localhost:8080/api`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- Grafana: `http://localhost:3000`
-- MailHog: `http://localhost:8025`
-- MinIO console: `http://localhost:9001`
 
 ### 8. Start the frontend
 
@@ -313,11 +476,22 @@ npm install
 npm run dev
 ```
 
-The frontend is available at `http://localhost:5173`.
+### Local endpoints
+
+| Application | URL |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| Gateway API | `http://localhost:8080/api` |
+| Swagger UI | `http://localhost:8080/swagger-ui.html` |
+| Grafana | `http://localhost:3000` |
+| MailHog | `http://localhost:8025` |
+| MinIO console | `http://localhost:9001` |
+
+---
 
 ## Development
 
-Run a backend service's tests:
+Run a backend service’s tests:
 
 ```powershell
 Set-Location backend/accounts-service
@@ -334,10 +508,25 @@ npm run build
 
 API documentation is generated by the gateway and exposed through Swagger UI while the gateway is running.
 
+---
+
 ## Project report
 
 For a complete view of the project—including system analysis, diagrams, and additional services—refer to the accompanying [project report (PDF)](docs/project-report.pdf).
 
-## Important security note
+---
 
-The Compose files under `examples/` are development templates. Do not expose their default services or credentials to the internet. Production deployments must use unique credentials, protected network boundaries, TLS, managed secrets, restricted storage access, and environment-specific configuration.
+## Security notice
+
+The Compose files under `examples/` are development templates.
+
+Production deployments must use:
+
+- Unique credentials
+- TLS for every public endpoint
+- Protected network boundaries
+- Managed secrets
+- Restricted object-storage access
+- Database backups
+- Environment-specific configuration
+- Firewall and service exposure rules
